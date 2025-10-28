@@ -9,16 +9,23 @@ import requests
 from pathlib import Path
 import sys
 
-def style_planning(val):
-    """Applique un style CSS simple aux cellules du planning."""
+def style_planning_text(val):
+    """Applique une couleur de TEXTE différente selon la matière."""
+    color = "#FAFAFA"
+    weight = "normal"
+
     if val == "":
-        return 'background-color: #f0f0f0; color: #d0d0d0;' 
-    elif val == "Mathematiques":
-        return 'background-color: #e0f0ff;' 
-    elif val == "Physique":
-        return 'background-color: #ffe0e0;'
-    else:
-        return ''
+        color = "#555" 
+    elif val == "Mathematiques" or val == "Physique" or val == "EnseignementScientifique":
+        color = "#87CEFA"
+        weight = "bold"
+    elif val == "Anglais" or val == "Espagnol":
+        color = "#90EE90"
+    elif val == "HistoireGeographie" or val == "Philosophie":
+        color = "#FFDAB9"
+    elif val == "EPS" or val == "Option":
+        color = "#D8BFD8"
+    return f'color: {color}; font-weight: {weight};'
 
 MINIZINC_VERSION = "2.9.4"
 MINIZINC_INSTALL_DIR = Path("/tmp/minizinc_install")
@@ -98,7 +105,7 @@ nombre_heures_jour_input = st.sidebar.number_input(
 )
 
 nombre_profs_input = st.sidebar.number_input(
-    "Nombre de professeurs disponibles (pool)",
+    "Nombre de professeurs disponibles",
     min_value=5,
     max_value=50,
     value=11,
@@ -109,7 +116,7 @@ num_classes_input = st.sidebar.number_input(
     "Nombre de classes",
     min_value=1,
     max_value=10,
-    value=4,
+    value=3,
     step=1
 )
 
@@ -145,6 +152,25 @@ for i, salle_name in enumerate(salles_enum_list):
     )
     capacites_salles_input.append(cap)
 
+st.sidebar.subheader("Indisponibilité des professeurs (par demi-journée)")
+demi_journees_options = {
+    0: "Disponible",
+    1: "Lundi Matin", 2: "Lundi Après-midi",
+    3: "Mardi Matin", 4: "Mardi Après-midi",
+    5: "Mercredi Matin", # 6 (Mercredi AM) est implicitement interdit
+    7: "Jeudi Matin", 8: "Jeudi Après-midi",
+    9: "Vendredi Matin", 10: "Vendredi Après-midi",
+}
+interdictions_input = []
+for i in range(nombre_profs_input):
+    selected_option = st.sidebar.selectbox(
+        f"Prof P{i+1} indisponible le:",
+        options=list(demi_journees_options.keys()),
+        format_func=lambda x: demi_journees_options[x],
+        key=f"interdiction_prof_{i}"
+    )
+    interdictions_input.append(selected_option)
+
 timeout_secondes = st.slider(
     "Temps de résolution maximum (secondes)",
     min_value=5, max_value=600, value=10, step=5
@@ -168,6 +194,7 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
         inst["DAY"] = range(1, nombre_heures_jour_input + 1)
         inst["WEEK"] = range(1, 5 + 1)
         inst["capacite_salle"] = capacites_salles_input
+        inst["interdictions"] = interdictions_input
 
     except Exception as e:
         st.error(f"Erreur lors de la création de l'instance MiniZinc: {e}")
@@ -175,7 +202,7 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
 
     st.header("Résultat de la résolution")
 
-    with st.spinner(f"Le solveur {solver.name} travaille... ({num_classes_input} classes, limité à {timeout_secondes}s)"):
+    with st.spinner(f"Calcul en cours... ({num_classes_input} classes, limité à {timeout_secondes}s)"):
         result = None
         try:
             try:
@@ -217,23 +244,90 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
         heures = []
 
         if hasattr(solution, "planning"):
+            matieres = [
+                "EnseignementScientifique", "Anglais", "Espagnol", "Mathematiques",
+                "HistoireGeographie", "Physique", "EPS", "Philosophie", "Option"
+            ]
+            matieres_map = {name: i for i, name in enumerate(matieres)}
+            def style_cell_html(cell_value):
+                """Génère une balise span HTML avec style basé sur la matière."""
+                if not cell_value or cell_value == "":
+                    return '<span style="color: #555;"></span>' # Gris pour Void/vide
+
+                lines = cell_value.split('\n')
+                matiere = lines[0]
+                
+                color = "#FAFAFA" # Blanc cassé par défaut
+                weight = "normal"
+                if matiere == "Mathematiques" or matiere == "Physique" or matiere == "EnseignementScientifique":
+                    color = "#87CEFA" # Bleu ciel
+                    weight = "bold"
+                elif matiere == "Anglais" or matiere == "Espagnol":
+                    color = "#90EE90" # Vert clair
+                elif matiere == "HistoireGeographie" or matiere == "Philosophie":
+                    color = "#FFDAB9" # Pêche
+                elif matiere == "EPS" or matiere == "Option":
+                    color = "#D8BFD8" # Violet clair
+                html_content = cell_value.replace('\n', '<br>')
+
+                return f'<span style="color: {color}; font-weight: {weight};">{html_content}</span>'
+
+
             planning_data = solution.planning
             num_classes_sol = len(planning_data)
             if num_classes_sol > 0 and planning_data[0] is not None and len(planning_data[0]) > 0:
                 nombre_heures = len(planning_data[0])
                 heures = [f"H{d} ({d+7}h)" for d in range(1, nombre_heures + 1)]
+                planning_salle_data = getattr(solution, "planning_salle", None)
+                prof_to_class_data = getattr(solution, "prof_to_class", None)
+                prefs_data = getattr(solution, "prefs", None)
+                obj_prof_used_value = sum(getattr(solution, "prof_est_utilise", [0]))
+                profs_indices = range(obj_prof_used_value)
 
                 st.header("Plannings par Classe")
                 for c in range(num_classes_sol):
                     st.subheader(f"Classe {c+1}")
-                    planning_str = [["" for _ in jours] for _ in range(nombre_heures)]
-                    if c < len(planning_data) and planning_data[c] is not None:
-                         planning_str = [[str(item) if item is not None else "" for item in row] for row in planning_data[c]]
+                    planning_display_list = [["" for _ in jours] for _ in range(nombre_heures)]
 
-                    df = pd.DataFrame(planning_str, columns=jours, index=heures)
-                    styled_df = df.style.applymap(style_planning)
-                    config = {jour: st.column_config.TextColumn(width="medium") for jour in jours}
-                    st.dataframe(styled_df, column_config=config, use_container_width=True)
+                    for d in range(nombre_heures):
+                        for w in range(len(jours)):
+                            cell_text_raw = ""
+                            if c<len(planning_data) and planning_data[c] is not None and \
+                               d<len(planning_data[c]) and planning_data[c][d] is not None and \
+                               w<len(planning_data[c][d]):
+
+                                matiere_obj = planning_data[c][d][w]
+                                if matiere_obj is not None :
+                                     matiere_name = str(matiere_obj)
+                                     if matiere_name != "Void":
+                                         salle_name = ""
+                                         prof_name = ""
+
+                                         if planning_salle_data and c < len(planning_salle_data) and \
+                                            d < len(planning_salle_data[c]) and w < len(planning_salle_data[c][d]):
+                                             salle_obj = planning_salle_data[c][d][w]
+                                             if salle_obj is not None and str(salle_obj) != "Empty":
+                                                 salle_name = str(salle_obj)
+
+                                         if prof_to_class_data and prefs_data and matiere_name in matieres_map:
+                                             matiere_index = matieres_map[matiere_name]
+                                             for p_index in profs_indices:
+                                                 if p_index < len(prof_to_class_data) and c < len(prof_to_class_data[p_index]) and \
+                                                    prof_to_class_data[p_index][c] == 1 and \
+                                                    p_index < len(prefs_data) and matiere_index < len(prefs_data[p_index]) and \
+                                                    prefs_data[p_index][matiere_index] == 1:
+                                                     prof_name = f"P{p_index+1}"
+                                                     break
+                                         
+                                         cell_text_raw = matiere_name
+                                         if prof_name: cell_text_raw += f"\n({prof_name})"
+                                         if salle_name: cell_text_raw += f"\n[{salle_name}]"
+                            planning_display_list[d][w] = style_cell_html(cell_text_raw)
+
+
+                    df = pd.DataFrame(planning_display_list, columns=jours, index=heures)
+                    st.markdown(df.to_html(escape=False, index=True), unsafe_allow_html=True)
+
             else:
                  st.warning("Données de planning vides ou invalides.")
         else:
@@ -315,7 +409,7 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
                                                 break
 
                 df = pd.DataFrame(prof_schedule_display, columns=jours, index=heures)
-                styled_df = df.style.applymap(style_planning)
+                styled_df = df.style.applymap(style_planning_text)
                 config = {jour: st.column_config.TextColumn(width="medium") for jour in jours}
                 st.dataframe(styled_df, column_config=config, use_container_width=True)
         else:
@@ -332,7 +426,6 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
             for c in range(num_classes_sol):
                 for d in range(nombre_heures):
                     for w in range(num_jours):
-                        # Add more robust bound checks
                          if c < len(planning_salle_data) and planning_salle_data[c] is not None and \
                             d < len(planning_salle_data[c]) and planning_salle_data[c][d] is not None and \
                             w < len(planning_salle_data[c][d]):
@@ -345,7 +438,7 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
             for salle_name, schedule_data in room_schedules.items():
                 st.subheader(f"Salle: {salle_name}")
                 df = pd.DataFrame(schedule_data, columns=jours, index=heures)
-                styled_df = df.style.applymap(style_planning)
+                styled_df = df.style.applymap(style_planning_text)
                 config = {jour: st.column_config.TextColumn(width="medium") for jour in jours}
                 st.dataframe(styled_df, column_config=config, use_container_width=True)
         else:

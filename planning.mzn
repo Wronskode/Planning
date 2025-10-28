@@ -4,6 +4,7 @@ int: nombre_heures_jour;
 set of int: DAY;
 set of int: WEEK;
 set of int: CLASS;
+array[PROFS] of int: interdictions;
 % Le nombre d'élèves par classe
 array[CLASS] of int: taille_classe;
 % L'ensemble des salles
@@ -142,6 +143,18 @@ constraint forall(c in CLASS, w in WEEK, d in 1..(nombre_heures_jour - 1)) (
     ->
     (planning_salle[c, d, w] = planning_salle[c, d+1, w])
 );
+% Interdictions profs horaires
+
+constraint forall (p in PROFS) (interdictions[p] = 1 -> forall(d in 1..4) (planning_prof[p, d, 1] = 0));
+constraint forall (p in PROFS) (interdictions[p] = 2 -> forall(d in 5..nombre_heures_jour) (planning_prof[p, d, 1] = 0));
+constraint forall (p in PROFS) (interdictions[p] = 3 -> forall(d in 1..4) (planning_prof[p, d, 2] = 0));
+constraint forall (p in PROFS) (interdictions[p] = 4 -> forall(d in 5..nombre_heures_jour) (planning_prof[p, d, 2] = 0));
+constraint forall (p in PROFS) (interdictions[p] = 5 -> forall(d in 1..4) (planning_prof[p, d, 3] = 0));
+constraint forall (p in PROFS) (interdictions[p] = 6 -> forall(d in 5..nombre_heures_jour) (planning_prof[p, d, 3] = 0));
+constraint forall (p in PROFS) (interdictions[p] = 7 -> forall(d in 1..4) (planning_prof[p, d, 4] = 0));
+constraint forall (p in PROFS) (interdictions[p] = 8 -> forall(d in 5..nombre_heures_jour) (planning_prof[p, d, 4] = 0));
+constraint forall (p in PROFS) (interdictions[p] = 9 -> forall(d in 1..4) (planning_prof[p, d, 5] = 0));
+constraint forall (p in PROFS) (interdictions[p] = 10 -> forall(d in 5..nombre_heures_jour) (planning_prof[p, d, 5] = 0));
 % --- Définition des composantes de l'objectif ---
 var int: obj_trous_compacts = 
     sum(c in CLASS, w in WEEK, d in 1..(nombre_heures_jour - 1)) (
@@ -177,7 +190,7 @@ var int: obj_trous_profs =
     );
 % --- Objectif final pondéré ---
 var int: obj = 
-      (1000000 * obj_prof_used)           % Prio 1: Minimiser le nb de profs
+      (100000 * obj_prof_used)           % Prio 1: Minimiser le nb de profs
     + (10000 * obj_trous_compacts)        % Prio 2: Pas de trous pour les élèves
     + (1000 * obj_trous_profs)          % Prio 3: Pas de trous pour les profs
     + (100 * obj_equilibrage_profs)     % Prio 4: Équilibrer la charge max

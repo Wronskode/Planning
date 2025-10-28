@@ -4,10 +4,10 @@ Bonjour ! Je suis Julien, étudiant en M2 Algorithmique à l'Université de Mont
 
 L'objectif ? Aller au-delà d'un simple planning et créer un outil capable de jongler avec une multitude de contraintes réelles (pédagogiques, logistiques, humaines) et même d'optimiser le recrutement des professeurs nécessaires !
 
-# 🚀 Découvrez l'application en direct ici : [Lien vers ton application Streamlit Cloud]
+# 🚀 Découvrez l'application en direct ici : https://planning-solver.streamlit.app/
 (Note : Le solveur travaille dur ! La résolution peut prendre quelques minutes, surtout si vous augmentez le nombre de classes.)
 
-(Insère ici une capture d'écran sympa de ton application Streamlit)
+![streamlit](image.png)
 
 # 🎯 Le Défi : Plus qu'un simple planning
 
@@ -31,8 +31,7 @@ J'ai choisi la PPC car elle excelle dans la gestion de problèmes combinatoires 
 
 Modélisation : Le cœur du projet est un modèle écrit en MiniZinc, un langage déclaratif puissant pour décrire des problèmes sous contraintes.
 
-Résolution : J'utilise Google OR-Tools CP-SAT comme solveur principal (via l'intégration MiniZinc). C'est un solveur SAT/CP open-source extrêmement performant, surtout pour les problèmes de planification. (Note pour l'application cloud : en raison de défis de configuration spécifiques à l'environnement d'hébergement, l'application déployée utilise Gecode, un autre solveur CP robuste, comme alternative).
-
+Résolution : J'utilise Google OR-Tools CP-SAT comme solveur principal (via l'intégration MiniZinc). C'est un solveur SAT/CP open-source extrêmement performant, surtout pour les problèmes de planification.
 Interface & Pilotage : Une application web interactive développée en Python avec Streamlit permet de paramétrer le problème et de visualiser les résultats. La communication avec MiniZinc se fait via la bibliothèque minizinc-python, et les plannings sont joliment affichés grâce à Pandas.
 
 # 🧩 Au cœur du modèle MiniZinc
