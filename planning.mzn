@@ -9,7 +9,7 @@ array[PROFS] of int: interdictions;
 array[CLASS] of int: taille_classe;
 % L'ensemble des salles
 enum SALLES = {S101, S102, S201, S202, S203, S204, Gymnase, Stade, LaboPhysique1, LaboPhysique2, LaboChimie, Empty};
-
+array[PROFS] of MATIERES: affectations;
 % La capacité de chaque salle
 array[SALLES] of int: capacite_salle;
 % array[SALLES] of var 0..: capacite_salle;
@@ -155,6 +155,9 @@ constraint forall (p in PROFS) (interdictions[p] = 7 -> forall(d in 1..4) (plann
 constraint forall (p in PROFS) (interdictions[p] = 8 -> forall(d in 5..nombre_heures_jour) (planning_prof[p, d, 4] = 0));
 constraint forall (p in PROFS) (interdictions[p] = 9 -> forall(d in 1..4) (planning_prof[p, d, 5] = 0));
 constraint forall (p in PROFS) (interdictions[p] = 10 -> forall(d in 5..nombre_heures_jour) (planning_prof[p, d, 5] = 0));
+
+% Affectations
+constraint forall (p in PROFS) (affectations[p] != Void -> prefs[p, affectations[p]] = 1);
 % --- Définition des composantes de l'objectif ---
 var int: obj_trous_compacts = 
     sum(c in CLASS, w in WEEK, d in 1..(nombre_heures_jour - 1)) (

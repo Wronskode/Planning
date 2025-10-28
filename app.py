@@ -9,6 +9,12 @@ import requests
 from pathlib import Path
 from random import randint
 
+matieres = [
+                "EnseignementScientifique", "Anglais", "Espagnol", "Mathematiques",
+                "HistoireGeographie", "Physique", "EPS", "Philosophie", "Option"
+            ]
+matieres_map = {name: i for i, name in enumerate(matieres)}
+
 def style_planning_text(val):
     """Applique une couleur de TEXTE différente selon la matière."""
     color = "#FAFAFA"
@@ -173,6 +179,17 @@ for i in range(nombre_profs_input):
     )
     interdictions_input.append(selected_option)
 
+st.sidebar.subheader("Affectations de certains professeurs à une matière spécifique")
+affectations_input = []
+for i in range(nombre_profs_input):
+    selected_option = st.sidebar.selectbox(
+        f"Prof P{i+1} affecté à :",
+        options=list(matieres_map.keys()),
+        format_func=lambda x: matieres_map[x],
+        key=f"affectation_prof_{i}"
+    )
+    affectations_input.append(selected_option)
+
 timeout_secondes = st.slider(
     "Temps de résolution maximum (secondes)",
     min_value=5, max_value=600, value=10, step=5
@@ -197,6 +214,7 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
         inst["WEEK"] = range(1, 5 + 1)
         inst["capacite_salle"] = capacites_salles_input
         inst["interdictions"] = interdictions_input
+        inst["affectations"] = affectations_input
 
     except Exception as e:
         st.error(f"Erreur lors de la création de l'instance MiniZinc: {e}")
@@ -246,11 +264,6 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
         heures = []
 
         if hasattr(solution, "planning"):
-            matieres = [
-                "EnseignementScientifique", "Anglais", "Espagnol", "Mathematiques",
-                "HistoireGeographie", "Physique", "EPS", "Philosophie", "Option"
-            ]
-            matieres_map = {name: i for i, name in enumerate(matieres)}
             def style_cell_html(cell_value):
                 """Génère une balise span HTML avec style basé sur la matière."""
                 if not cell_value or cell_value == "":
@@ -359,12 +372,6 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
             st.header(f"Recrutement & Plannings ({obj_prof_used_value} professeurs)")
 
             profs_indices = range(obj_prof_used_value)
-
-            matieres = [
-                "EnseignementScientifique", "Anglais", "Espagnol", "Mathematiques",
-                "HistoireGeographie", "Physique", "EPS", "Philosophie", "Option"
-            ]
-            matieres_map = {name: i for i, name in enumerate(matieres)}
 
             prefs_display = []
             for p_index in profs_indices:
