@@ -160,7 +160,7 @@ constraint forall (p in PROFS) (interdictions[p] = 10 -> forall(d in 5..nombre_h
 constraint forall (p in PROFS) (affectations[p] != Void -> prefs[p, affectations[p]] = 1);
 % --- Définition des composantes de l'objectif ---
 var int: obj_trous_compacts = 
-    sum(c in CLASS, w in WEEK, d in 1..(nombre_heures_jour - 1)) (
+    sum(c in CLASS, w in WEEK, d in 2..(nombre_heures_jour - 1)) (
         bool2int(planning[c, d, w] = Void /\ planning[c, d+1, w] != Void)
     );
 
@@ -172,6 +172,10 @@ array[PROFS] of var 0..1: prof_est_utilise;
 
 constraint forall(p in PROFS) (
     prof_est_utilise[p] = 1 <-> sum(c in CLASS) (prof_to_class[p, c]) > 0
+);
+
+constraint forall(p in PROFS) (
+    prof_est_utilise[p] = 1 -> sum(d in DAY, w in WEEK) (planning_prof[p, d, w]) >= 1
 );
 
 constraint forall(p in 1..(card(PROFS) - 1)) (
@@ -191,14 +195,20 @@ var int: obj_trous_profs =
     sum(p in PROFS, w in WEEK, d in 1..(nombre_heures_jour - 1)) (
         bool2int(planning_prof[p, d, w] = 0 /\ planning_prof[p, d+1, w] = 1)
     );
+    
+var int: count_start_after_8am = 
+    sum(c in CLASS, w in WEEK) (
+        bool2int(planning[c, 1, w] = Void)
+    );    
 % --- Objectif final pondéré ---
 var int: obj = 
       (100000 * obj_prof_used)           % Prio 1: Minimiser le nb de profs
     + (10000 * obj_trous_compacts)        % Prio 2: Pas de trous pour les élèves
+    - (5000 * count_start_after_8am)
     + (1000 * obj_trous_profs)          % Prio 3: Pas de trous pour les profs
     + (100 * obj_equilibrage_profs)     % Prio 4: Équilibrer la charge max
     + (10 * obj_eps_late)               % Prio 5: EPS l'après-midi
-    + (1 * obj_makespan);               % Prio 6: Finir tôt
+    + (2500 * obj_makespan);               % Prio 6: Finir tôt
 % var int: obj = obj_prof_used;
 solve minimize obj;
     
