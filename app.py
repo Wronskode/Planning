@@ -409,7 +409,7 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
                                                 break
 
                 df = pd.DataFrame(prof_schedule_display, columns=jours, index=heures)
-                styled_df = df.style.applymap(style_planning_text)
+                styled_df = df.style.map(style_planning_text)
                 config = {jour: st.column_config.TextColumn(width="medium") for jour in jours}
                 st.dataframe(styled_df, column_config=config, width="stretch")
         else:
@@ -438,7 +438,7 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
             for salle_name, schedule_data in room_schedules.items():
                 st.subheader(f"Salle: {salle_name}")
                 df = pd.DataFrame(schedule_data, columns=jours, index=heures)
-                styled_df = df.style.applymap(style_planning_text)
+                styled_df = df.style.map(style_planning_text)
                 config = {jour: st.column_config.TextColumn(width="medium") for jour in jours}
                 st.dataframe(styled_df, column_config=config, width="stretch")
         else:
