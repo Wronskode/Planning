@@ -411,7 +411,7 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
                 df = pd.DataFrame(prof_schedule_display, columns=jours, index=heures)
                 styled_df = df.style.applymap(style_planning_text)
                 config = {jour: st.column_config.TextColumn(width="medium") for jour in jours}
-                st.dataframe(styled_df, column_config=config, use_container_width=True)
+                st.dataframe(styled_df, column_config=config, width="stretch")
         else:
             st.warning("Variables professeurs non trouvées ou incomplètes pour afficher les plannings.")
 
@@ -440,7 +440,7 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
                 df = pd.DataFrame(schedule_data, columns=jours, index=heures)
                 styled_df = df.style.applymap(style_planning_text)
                 config = {jour: st.column_config.TextColumn(width="medium") for jour in jours}
-                st.dataframe(styled_df, column_config=config, use_container_width=True)
+                st.dataframe(styled_df, column_config=config, width="stretch")
         else:
             st.warning("Variable 'planning_salle' non trouvée.")
 
