@@ -1,7 +1,7 @@
 taille_classe = [30, 32];
 capacite_salle = 
   [35,   35,   31,   30,   32,      29,      60,      100,          32, 32,      34      , 0];
-PROFS = 1..11;
+PROFS = 1..8;
 nombre_heures_jour = 10;
 DAY = 1..nombre_heures_jour;
 WEEK = 1..5;

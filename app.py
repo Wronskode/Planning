@@ -7,7 +7,7 @@ import os
 import tarfile
 import requests
 from pathlib import Path
-import sys
+from random import randint
 
 def style_planning_text(val):
     """Applique une couleur de TEXTE différente selon la matière."""
@@ -121,13 +121,15 @@ num_classes_input = st.sidebar.number_input(
 )
 
 tailles_classes_input = []
+default_capacites = [randint(25, 33) for _ in range(num_classes_input)]
 st.sidebar.subheader("Capacité de chaque classe")
 for i in range(num_classes_input):
+    default_cap = default_capacites[i] if i < len(default_capacites) else 30
     size = st.sidebar.number_input(
         f"Taille Classe {i+1}",
         min_value=15,
         max_value=40,
-        value=30,
+        value=default_cap,
         step=1,
         key=f"taille_classe_{i}"
     )

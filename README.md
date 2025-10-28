@@ -94,6 +94,8 @@ Définir la taille de chaque classe.
 
 Ajuster le nombre total de professeurs disponibles dans le "pool de recrutement".
 
+Interdire certains professeurs d'enseigner une demi-journée de la semaine (professeur et demi-journée à choisir).
+
 Modifier la capacité de chaque salle.
 
 Définir un temps limite pour la résolution (important pour les instances complexes !).
