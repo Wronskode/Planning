@@ -181,11 +181,14 @@ for i in range(nombre_profs_input):
 
 st.sidebar.subheader("Affectations de certains professeurs à une matière spécifique")
 affectations_input = []
+matieres_map_affectations = {}
+for i in range(len(matieres)):
+    matieres_map_affectations[i] = matieres[i]
 for i in range(nombre_profs_input):
     selected_option = st.sidebar.selectbox(
         f"Prof P{i+1} affecté à :",
-        options=list(matieres_map.keys()),
-        format_func=lambda x: matieres_map[x],
+        options=list(matieres_map_affectations.keys()),
+        format_func=lambda x: matieres_map_affectations[x],
         key=f"affectation_prof_{i}"
     )
     affectations_input.append(selected_option)
