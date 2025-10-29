@@ -1,10 +1,10 @@
 taille_classe = [30, 32, 29];
 capacite_salle = 
   [35,   35,   31,   30,   32,      29,      60,      100,          32, 32,      34      , 0];
-PROFS = 1..20;
+PROFS = 1..11;
 nombre_heures_jour = 10;
 DAY = 1..nombre_heures_jour;
 WEEK = 1..5;
 CLASS = 1..3;
-interdictions = [1, 2, 3, 8, 2, 3, 7, 8, 9, 10, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-affectations = [EPS, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void];
+interdictions = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+affectations = [Void, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void];

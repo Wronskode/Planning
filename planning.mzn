@@ -101,15 +101,6 @@ constraint forall(p in PROFS, d in DAY, w in WEEK) (
             )
         )
 );
-constraint forall(c in CLASS, d in DAY, w in WEEK) (
-    planning[c, d, w] != Void -> 
-        sum(p in PROFS) (
-            bool2int(
-                prof_to_class[p, c] = 1 /\ 
-                element(enum2int(planning[c, d, w]), prefs[p, ..]) = 1
-            )
-        ) >= 1 % On garde >= 1 pour la flexibilité
-);
 
 % Contraintes horaires (profs)
 constraint forall(p in PROFS) (sum(d in DAY, w in WEEK) (planning_prof[p, d, w]) <= 24);
@@ -142,6 +133,18 @@ constraint forall(c in CLASS, w in WEEK, d in 1..(nombre_heures_jour - 1)) (
     (planning[c, d, w] = planning[c, d+1, w])
     ->
     (planning_salle[c, d, w] = planning_salle[c, d+1, w])
+);
+
+constraint forall(c in CLASS, d in DAY, w in WEEK where planning[c, d, w] != Void) (
+    sum(p in PROFS) (
+         bool2int(
+              prof_to_class[p, c] = 1
+              /\
+              element(enum2int(planning[c, d, w]), prefs[p, ..]) = 1
+              /\
+              planning_prof[p, d, w] = 1 
+         )
+    ) = 1
 );
 % Interdictions profs horaires
 

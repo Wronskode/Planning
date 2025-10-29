@@ -285,7 +285,7 @@ if st.session_state.minizinc_result is not None:
                                             if is_competent: prof_schedule_display[d][w] = f"Classe {c+1}"; break
                 df = pd.DataFrame(prof_schedule_display, columns=jours, index=heures)
                 config = {jour: st.column_config.TextColumn(width="small") for jour in jours} # smaller width
-                st.dataframe(df, column_config=config, use_container_width=True)
+                st.dataframe(df, column_config=config, width="stretch")
         else:
             st.warning("Variables profs incomplètes pour plannings.")
 
@@ -310,7 +310,7 @@ if st.session_state.minizinc_result is not None:
                 st.subheader(f"Salle: {salle_name}")
                 df = pd.DataFrame(schedule_data, columns=jours, index=heures)
                 config = {jour: st.column_config.TextColumn(width="small") for jour in jours} # smaller width
-                st.dataframe(df, column_config=config, use_container_width=True)
+                st.dataframe(df, column_config=config, width="stretch")
         else:
             st.warning("Variable 'planning_salle' non trouvée.")
 
@@ -319,7 +319,7 @@ if st.session_state.minizinc_result is not None:
     elif result:
         st.error(f"Pas de solution retournée. Statut: {result.status}")
     else:
-        st.error("Résolution échouée ou aucun résultat (réessayez en augmentant le timeout ?)")
+        st.error("Résolution échouée ou aucun résultat, peut-être que les contraintes sont trop strictes (réessayez en augmentant le timeout ou en assouplissant les contraintes).")
 elif 'minizinc_result' not in st.session_state or st.session_state.minizinc_result is None:
     if not st.session_state.get("solve_error", False):
          st.info("Configurez les paramètres et lancez la résolution.")

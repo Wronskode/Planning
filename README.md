@@ -80,7 +80,7 @@ Minimiser les "trous" dans les journées des professeurs.
 
 Équilibrer la charge de travail maximale entre les professeurs.
 
-Préférence pour placer l'EPS l'après-midi/fin de semaine.
+Préférence pour placer l'EPS le matin en fin de semaine.
 
 Minimiser le "makespan" (finir les cours le plus tôt possible, en dernier recours).
 
