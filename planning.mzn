@@ -5,6 +5,7 @@ set of int: DAY;
 set of int: WEEK;
 set of int: CLASS;
 array[PROFS] of int: interdictions;
+array[MATIERES] of int: nombre_heures_cours;
 % Le nombre d'élèves par classe
 array[CLASS] of int: taille_classe;
 % L'ensemble des salles
@@ -35,15 +36,15 @@ array[PROFS, DAY, WEEK] of var 0..1: planning_prof; % 0 = libre, 1 = occupé
 
 array[CLASS, DAY, WEEK] of var SALLES: planning_salle;
 % Quotas d'heures par matière
-constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = EnseignementScientifique)) = 2);
-constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Anglais)) = 2);
-constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Mathematiques)) = 6);
-constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Physique)) = 6);
-constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Espagnol)) = 2);
-constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = EPS)) = 2);
-constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Philosophie)) = 3);
-constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = HistoireGeographie)) = 2);
-constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Option)) = 3);
+constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = EnseignementScientifique)) = nombre_heures_cours[EnseignementScientifique]);
+constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Anglais)) = nombre_heures_cours[Anglais]);
+constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Mathematiques)) = nombre_heures_cours[Mathematiques]);
+constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Physique)) = nombre_heures_cours[Physique]);
+constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Espagnol)) = nombre_heures_cours[Espagnol]);
+constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = EPS)) = nombre_heures_cours[EPS]);
+constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Philosophie)) = nombre_heures_cours[Philosophie]);
+constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = HistoireGeographie)) = nombre_heures_cours[HistoireGeographie]);
+constraint forall(c in CLASS) (sum(d in DAY, w in WEEK) (bool2int(planning[c, d, w] = Option)) = nombre_heures_cours[Option]);
 
 % Contraintes horaires (classes)
 constraint forall (c in CLASS) (forall(w in WEEK where w != 3) (planning[c, 4, w] = planning[c, 5, w] /\ planning[c, 5, w] = Void \/ planning[c, 5, w] = planning[c, 6, w] /\ planning[c, 5, w] = Void));
@@ -88,7 +89,9 @@ constraint forall(c in CLASS, w in WEEK, d in DAY) (
 
 constraint forall(c in CLASS, w in WEEK, d in DAY) (planning[c, d, w] = Espagnol -> forall(d2 in DAY where d != d2) (planning[c, d2, w] != Espagnol));
 constraint forall(c in CLASS, w in WEEK, d in DAY) (planning[c, d, w] = Anglais -> forall(d2 in DAY where d != d2) (planning[c, d2, w] != Anglais));
-constraint forall(c in CLASS) (exists(w in WEEK) (forall (d in 1..2) (planning[c, d, w] = EPS)));
+constraint forall(c in CLASS, d in DAY, w in WEEK) (planning[c, d, w] = EPS -> d <= 2);
+constraint forall(c in CLASS, d in DAY, w in WEEK where d = 2) (planning[c, d, w] = EPS -> planning[c, d-1, w] = EPS);
+constraint forall(c in CLASS, d in DAY, w in WEEK where d = 1) (planning[c, d, w] = EPS -> planning[c, d+1, w] = EPS);
 
 constraint forall (p in PROFS) (sum(m in MATIERES) (prefs[p, m] = 1) <= 1);
 % --- Gestion des ressources (Professeurs) ---

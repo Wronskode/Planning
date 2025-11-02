@@ -9,6 +9,7 @@ import requests
 from pathlib import Path
 import sys
 from random import randint
+import json
 
 MINIZINC_VERSION = "2.9.4"
 MINIZINC_INSTALL_DIR = Path("/tmp/minizinc_install")
@@ -25,7 +26,6 @@ matieres_map = {name: i for i, name in enumerate(matieres)}
 matieres_map_affectations = {0: "Pas d'affectation spécifique"}
 for i, name in enumerate(matieres):
     matieres_map_affectations[i+1] = name 
-
 if 'minizinc_result' not in st.session_state:
     st.session_state.minizinc_result = None
 
@@ -57,7 +57,6 @@ def setup_minizinc(version, install_dir, executable_path, archive_name_arg, down
         return None
 
 minizinc_exe_path_obj = setup_minizinc(MINIZINC_VERSION, MINIZINC_INSTALL_DIR, MINIZINC_EXECUTABLE, archive_name, download_url)
-solver = None
 if minizinc_exe_path_obj:
     try:
         driver = minizinc.Driver(minizinc_exe_path_obj)
@@ -73,46 +72,130 @@ if minizinc_exe_path_obj:
 else:
     st.error("Échec install MiniZinc.")
     st.stop()
+# solver = minizinc.Solver.lookup("cp-sat")
 st.set_page_config(layout="wide")
 st.title("Solveur d'Emploi du Temps 📅")
 
 with st.sidebar:
     st.header("Paramètres du Problème")
-    timeout_secondes = st.slider("Timeout (sec)", 5, 600, 5, 5)
-    nombre_heures_jour_input = st.number_input("Heures/jour", 4, 12, 10, 1)
-    nombre_profs_input = st.number_input("Nb Profs (pool)", 5, 50, 11, 1)
-    num_classes_input = st.number_input("Nb Classes", 1, 10, 3, 1)
+    uploaded_config = st.file_uploader(
+        "Charger une configuration (.json)", 
+        type="json"
+    )
+    if uploaded_config is not None:
+        try:
+            config_json = json.load(uploaded_config)
+            st.session_state.loaded_config = config_json
+            st.success("Configuration chargée !")
+        except Exception as e:
+            st.error(f"Erreur lecture JSON: {e}")
+            st.session_state.loaded_config = {} 
+    config = st.session_state.get("loaded_config", {})
+    timeout_secondes = st.slider("Timeout (sec)", 5, 600, config.get("timeout", 5), 5)
 
-    tailles_classes_input = []
-    st.subheader("Capacité Classes")
-    default_tailles = [randint(25, 33) for _ in range(num_classes_input)]
-    for i in range(num_classes_input):
-        size = st.number_input(f"Taille Classe {i+1}", 15, 40, default_tailles[i], 1, key=f"tcl_{i}")
-        tailles_classes_input.append(size)
+    tab_general, tab_classes, tab_salles, tab_profs, tab_cours = st.tabs(
+        ["Général", "Classes", "Salles", "Professeurs", "Cours"]
+    )
+    with tab_general:
+        st.subheader("Paramètres Généraux")
+        nombre_heures_jour_input = st.number_input("Heures/jour", 4, 12, config.get("nombre_heures_jour", 10), 1)
+        nombre_profs_input = st.number_input("Nb Profs", 5, 50, config.get("nombre_profs", 11), 1)
+    with tab_classes:
+        st.subheader("Paramètres des classes")
+        num_classes_input = st.number_input("Nb Classes", 1, 10, config.get("num_classes", 3), 1)
+        tailles_classes_input = []
+        st.subheader("Capacité Classes")
+        for i in range(num_classes_input):
+            default_tailles = [randint(25, 33) for _ in range(num_classes_input)]
+            size = st.number_input(f"Taille Classe {i+1}", 15, 40, config.get("tailles_classes", default_tailles)[i], 1, key=f"tcl_{i}")
+            tailles_classes_input.append(size)
+    with tab_salles:
+        st.subheader("Capacité des salles")
+        salles_enum_list = ["S101","S102","S201","S202","S203","S204","Gymnase","Stade","LaboPhysique1","LaboPhysique2","LaboChimie","Empty"]
+        capacites_salles_input = []
+        st.subheader("Capacité Salles")
+        default_caps = [35, 35, 31, 30, 32, 29, 60, 100, 32, 32, 34, 0]
+        for i, name in enumerate(salles_enum_list):
+            if name == "Empty": capacites_salles_input.append(0); continue
+            cap = st.number_input(f"Capacité {name}", 0, 150, config.get("capacites_salles", default_caps)[i], 1, key=f"csal_{name}")
+            capacites_salles_input.append(cap)
 
-    salles_enum_list = ["S101","S102","S201","S202","S203","S204","Gymnase","Stade","LaboPhysique1","LaboPhysique2","LaboChimie","Empty"]
-    capacites_salles_input = []
-    st.subheader("Capacité Salles")
-    default_caps = [35, 35, 31, 30, 32, 29, 60, 100, 32, 32, 34, 0]
-    for i, name in enumerate(salles_enum_list):
-        if name == "Empty": capacites_salles_input.append(0); continue
-        cap = st.number_input(f"Capacité {name}", 0, 150, default_caps[i], 1, key=f"csal_{name}")
-        capacites_salles_input.append(cap)
+    with tab_profs:
+        st.subheader("Indisponibilités Profs")
+        dj_opts = {0:"Dispo", 1:"Lu Ma", 2:"Lu Ap", 3:"Ma Ma", 4:"Ma Ap", 5:"Me Ma", 7:"Je Ma", 8:"Je Ap", 9:"Ve Ma", 10:"Ve Ap"}
+        dj_options_list = list(dj_opts.keys())
+        saved_interdictions = config.get("interdictions", [])
+        
+        interdictions_input = []
+        for i in range(nombre_profs_input):
+            default_value = saved_interdictions[i] if i < len(saved_interdictions) else 0 
+            default_index = 0
+            if default_value in dj_options_list:
+                default_index = dj_options_list.index(default_value)
+            
+            sel = st.selectbox(
+                f"P{i+1}",
+                options=dj_options_list,
+                index=default_index,
+                format_func=lambda x: dj_opts[x],
+                key=f"int_{i}"
+            )
+            # st.info(default_index)
+            interdictions_input.append(default_index)
+        
+        st.subheader("Affectations Spécifiques Profs")
+        affect_options_list = list(matieres_map_affectations.keys())
+        saved_affectations = config.get("affectations_raw", [])
+        
+        affectations_input_raw = []
+        affectations_input_mzn = []
+        for i in range(nombre_profs_input):
+            default_value = saved_affectations[i] if i < len(saved_affectations) else 0
+            sel_idx = st.selectbox(
+                f"P{i+1}",
+                options=affect_options_list,
+                index=default_value,
+                format_func=lambda x, m=matieres_map_affectations: m.get(x, str(x)),
+                key=f"aff_{i}"
+            )
+            affectations_input_raw.append(default_value)
+            affectations_input_mzn.append(matieres_map_affectations[default_value] if default_value > 0 else "Void")
+    with tab_cours:
+        st.subheader("Nombre d'heures de cours par semaine par matière")
+        dj_opts = {"Mathematiques":6, "Physique":6, "EnseignementScientifique":2, "Anglais":2, "Espagnol":2,
+                   "HistoireGeographie":2, "Philosophie":3, "EPS":2, "Option":3}
+        saved_opts = []
+        for i in range(len(dj_opts)):
+            x = st.number_input(
+                f"{matieres[i]}",
+                min_value=0,
+                max_value=10,
+                value=dj_opts[matieres[i]],
+                key=f"cours_{i}"
+            )
+            saved_opts.append(x)
+        saved_opts.append(0) # Pour 'Void'
+    # st.subheader("Gérer la Configuration")
+    # st.info(interdictions_input)
+    config_data_to_save = {
+        "nombre_heures_jour": nombre_heures_jour_input,
+        "nombre_profs": nombre_profs_input,
+        "num_classes": num_classes_input,
+        "tailles_classes": tailles_classes_input,
+        "capacites_salles": capacites_salles_input,
+        "interdictions": interdictions_input,
+        "affectations_raw": affectations_input_raw,
+        "timeout": timeout_secondes,
+        "nombre_heures_cours": saved_opts
+    }
+    config_json = json.dumps(config_data_to_save, indent=2)
 
-    st.subheader("Indisponibilités Profs")
-    dj_opts = {0:"Dispo", 1:"Lu Ma", 2:"Lu Ap", 3:"Ma Ma", 4:"Ma Ap", 5:"Me Ma", 7:"Je Ma", 8:"Je Ap", 9:"Ve Ma", 10:"Ve Ap"}
-    interdictions_input = []
-    for i in range(nombre_profs_input):
-        sel = st.selectbox(f"P{i+1}", list(dj_opts.keys()), format_func=lambda x: dj_opts[x], key=f"int_{i}")
-        interdictions_input.append(sel)
-
-    st.subheader("Affectations Spécifiques Profs")
-    affectations_input_raw = []
-    affectations_input_mzn = []
-    for i in range(nombre_profs_input):
-        sel_idx = st.selectbox(f"P{i+1}", list(matieres_map_affectations.keys()), format_func=lambda x: matieres_map_affectations[x], key=f"aff_{i}")
-        affectations_input_raw.append(sel_idx)
-        affectations_input_mzn.append(matieres_map_affectations[sel_idx] if sel_idx > 0 else "Void")
+    st.download_button(
+        label="Sauvegarder la Configuration",
+        data=config_json,
+        file_name="config_planning.json",
+        mime="application/json",
+    )
 
 # --- Bouton de Lancement et Logique de Résolution ---
 if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_secondes} sec)", icon="▶️"):
@@ -130,6 +213,7 @@ if st.button(f"Lancer la résolution ({num_classes_input} classes, max {timeout_
         inst["capacite_salle"] = capacites_salles_input
         inst["interdictions"] = interdictions_input
         inst["affectations"] = affectations_input_mzn
+        inst["nombre_heures_cours"] = saved_opts
 
     except Exception as e: st.error(f"Erreur création instance: {e}"); st.stop()
 
