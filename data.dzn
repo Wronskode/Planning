@@ -8,3 +8,4 @@ WEEK = 1..5;
 CLASS = 1..3;
 interdictions = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 affectations = [Void, Void, Void, Void, Void, Void, Void, Void, Void, Void, Void];
+nombre_heures_cours = [2, 2, 2, 6, 2, 6, 2, 2, 3, 0]
