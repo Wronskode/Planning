@@ -52,15 +52,15 @@ constraint forall (c in CLASS) (forall(d in DAY where d > 4) (planning[c, d, 3] 
 
 % Contraintes pédagogiques
 constraint forall(c in CLASS) (forall(m in MATIERES where m != Void) (forall(w in WEEK) (sum(d in DAY) (bool2int(planning[c, d, w] = m)) <= 3)));
-constraint forall(c in CLASS) (exists(d in 1..(nombre_heures_jour-1), w in WEEK) (planning[c, d, w] = HistoireGeographie /\ planning[c, d+1, w] = HistoireGeographie));
-constraint forall(c in CLASS) (exists(d in 1..(nombre_heures_jour-1), w in WEEK) (planning[c, d, w] = Philosophie /\ planning[c, d+1, w] = Philosophie));
-constraint forall(c in CLASS) (forall(w in WEEK) (sum(d in DAY) (bool2int(planning[c, d, w] = Philosophie)) <= 2));
+constraint forall(c in CLASS) (exists(d in 1..(nombre_heures_jour-1), w in WEEK) (nombre_heures_cours[HistoireGeographie] >= 2 -> planning[c, d, w] = HistoireGeographie /\ planning[c, d+1, w] = HistoireGeographie));
+constraint forall(c in CLASS) (exists(d in 1..(nombre_heures_jour-1), w in WEEK) (nombre_heures_cours[Philosophie] >= 2 -> planning[c, d, w] = Philosophie /\ planning[c, d+1, w] = Philosophie));
+% constraint forall(c in CLASS) (forall(w in WEEK) (sum(d in DAY) (bool2int(planning[c, d, w] = Philosophie)) <= 2));
 constraint forall(c in CLASS) (forall(w in WEEK)
-    (planning[c, 1, w] = HistoireGeographie -> planning[c, 2, w] = HistoireGeographie));
+    (planning[c, 1, w] = HistoireGeographie /\ nombre_heures_cours[HistoireGeographie] >= 2 -> planning[c, 2, w] = HistoireGeographie));
     
 constraint forall(c in CLASS, w in WEEK, d in DAY) (
     % SI c'est des Maths
-    (planning[c, d, w] = Mathematiques) ->
+    (planning[c, d, w] = Mathematiques /\ nombre_heures_cours[Mathematiques] >= 2) ->
     (
         % ALORS le précédent OU le suivant doit aussi être Maths
         (d > 1 /\ planning[c, d-1, w] = Mathematiques)
@@ -70,7 +70,7 @@ constraint forall(c in CLASS, w in WEEK, d in DAY) (
 );    
 
 constraint forall(c in CLASS, w in WEEK, d in DAY) (
-    (planning[c, d, w] = Physique) ->
+    (planning[c, d, w] = Physique /\ nombre_heures_cours[Physique] >= 2) ->
     (
         (d > 1 /\ planning[c, d-1, w] = Physique)
         \/
@@ -79,7 +79,7 @@ constraint forall(c in CLASS, w in WEEK, d in DAY) (
 );    
 
 constraint forall(c in CLASS, w in WEEK, d in DAY) (
-    (planning[c, d, w] = EnseignementScientifique) ->
+    (planning[c, d, w] = EnseignementScientifique /\ nombre_heures_cours[EnseignementScientifique] >= 2) ->
     (
         (d > 1 /\ planning[c, d-1, w] = EnseignementScientifique)
         \/
@@ -90,8 +90,8 @@ constraint forall(c in CLASS, w in WEEK, d in DAY) (
 constraint forall(c in CLASS, w in WEEK, d in DAY) (planning[c, d, w] = Espagnol -> forall(d2 in DAY where d != d2) (planning[c, d2, w] != Espagnol));
 constraint forall(c in CLASS, w in WEEK, d in DAY) (planning[c, d, w] = Anglais -> forall(d2 in DAY where d != d2) (planning[c, d2, w] != Anglais));
 constraint forall(c in CLASS, d in DAY, w in WEEK) (planning[c, d, w] = EPS -> d <= 2);
-constraint forall(c in CLASS, d in DAY, w in WEEK where d = 2) (planning[c, d, w] = EPS -> planning[c, d-1, w] = EPS);
-constraint forall(c in CLASS, d in DAY, w in WEEK where d = 1) (planning[c, d, w] = EPS -> planning[c, d+1, w] = EPS);
+constraint forall(c in CLASS, d in DAY, w in WEEK where d = 2) (planning[c, d, w] = EPS /\ nombre_heures_cours[EPS] >= 2 -> planning[c, d-1, w] = EPS);
+constraint forall(c in CLASS, d in DAY, w in WEEK where d = 1) (planning[c, d, w] = EPS /\ nombre_heures_cours[EPS] >= 2 -> planning[c, d+1, w] = EPS);
 
 constraint forall (p in PROFS) (sum(m in MATIERES) (prefs[p, m] = 1) <= 1);
 % --- Gestion des ressources (Professeurs) ---

@@ -29,6 +29,38 @@ for i, name in enumerate(matieres):
 if 'minizinc_result' not in st.session_state:
     st.session_state.minizinc_result = None
 
+def process_config_upload():
+    uploaded_file = st.session_state.config_uploader
+    
+    if uploaded_file is None:
+        st.session_state.loaded_config = {}
+        st.session_state.last_uploaded_filename = None
+        return
+    if st.session_state.get("last_uploaded_filename", None) == uploaded_file.name:
+        return
+
+    try:
+        uploaded_file.seek(0)
+        config_json = json.load(uploaded_file)
+        st.session_state.loaded_config = config_json
+        st.session_state.last_uploaded_filename = uploaded_file.name
+        if "interdictions" in config_json:
+            for i, val in enumerate(config_json["interdictions"]):
+                st.session_state[f"int_{i}"] = val 
+        if "affectations_raw" in config_json:
+             for i, val in enumerate(config_json["affectations_raw"]):
+                st.session_state[f"aff_{i}"] = val
+        if "nombre_heures_cours" in config_json:
+            for i, val in enumerate(config_json["nombre_heures_cours"]):
+                st.session_state[f"cours_{i}"] = val
+        
+        st.session_state.config_load_success = True # Pour le message
+
+    except Exception as e:
+        st.session_state.config_load_error = str(e)
+        st.session_state.loaded_config = {}
+        st.session_state.last_uploaded_filename = None
+
 @st.cache_resource
 def setup_minizinc(version, install_dir, executable_path, archive_name_arg, download_url_arg):
     if executable_path.exists():
@@ -75,27 +107,20 @@ else:
 # solver = minizinc.Solver.lookup("cp-sat")
 st.set_page_config(layout="wide")
 st.title("Solveur d'Emploi du Temps 📅")
-
 with st.sidebar:
     st.header("Paramètres du Problème")
+    if "last_uploaded_filename" not in st.session_state:
+        st.session_state.last_uploaded_filename = None
     uploaded_config = st.file_uploader(
         "Charger une configuration (.json)", 
-        type="json"
+        type="json",
+        key="config_uploader",
+        on_change=process_config_upload 
     )
-    if uploaded_config is not None:
-        try:
-            config_json = json.load(uploaded_config)
-            st.session_state.loaded_config = config_json
-            if "interdictions" in config_json:
-                for i, val in enumerate(config_json["interdictions"]):
-                    st.session_state[f"int_{i}"] = val 
-            if "affectations_raw" in config_json:
-                 for i, val in enumerate(config_json["affectations_raw"]):
-                    st.session_state[f"aff_{i}"] = val
-            st.success("Configuration chargée !")
-        except Exception as e:
-            st.error(f"Erreur lecture JSON: {e}")
-            st.session_state.loaded_config = {} 
+    if st.session_state.pop("config_load_success", False):
+        st.success("Configuration chargée !")
+    if "config_load_error" in st.session_state:
+        st.error(f"Erreur lecture JSON: {st.session_state.pop('config_load_error')}")
     config = st.session_state.get("loaded_config", {})
     timeout_secondes = st.slider("Timeout (sec)", 5, 600, config.get("timeout", 5), 5)
 
@@ -111,9 +136,17 @@ with st.sidebar:
         num_classes_input = st.number_input("Nb Classes", 1, 10, config.get("num_classes", 3), 1)
         tailles_classes_input = []
         st.subheader("Capacité Classes")
+        
+        saved_tailles = config.get("tailles_classes", []) 
+        
         for i in range(num_classes_input):
-            default_tailles = [randint(25, 33) for _ in range(num_classes_input)]
-            size = st.number_input(f"Taille Classe {i+1}", 15, 40, config.get("tailles_classes", default_tailles)[i], 1, key=f"tcl_{i}")
+            widget_key = f"tcl_{i}"
+            if widget_key not in st.session_state:
+                if i < len(saved_tailles):
+                    st.session_state[widget_key] = saved_tailles[i]
+                else:
+                    st.session_state[widget_key] = randint(25, 33)
+            size = st.number_input(f"Taille Classe {i+1}", 15, 40, key=widget_key)
             tailles_classes_input.append(size)
     with tab_salles:
         st.subheader("Capacité des salles")
@@ -121,9 +154,28 @@ with st.sidebar:
         capacites_salles_input = []
         st.subheader("Capacité Salles")
         default_caps = [35, 35, 31, 30, 32, 29, 60, 100, 32, 32, 34, 0]
+        
+        saved_capacites = config.get("capacites_salles", default_caps)
+
         for i, name in enumerate(salles_enum_list):
-            if name == "Empty": capacites_salles_input.append(0); continue
-            cap = st.number_input(f"Capacité {name}", 0, 150, config.get("capacites_salles", default_caps)[i], 1, key=f"csal_{name}")
+            if name == "Empty": 
+                capacites_salles_input.append(0); 
+                continue
+            
+            widget_key = f"csal_{name}"
+            if widget_key not in st.session_state:
+                if i < len(saved_capacites):
+                    default_cap = saved_capacites[i]
+                else:
+                    default_cap = default_caps[i] if i < len(default_caps) else 30
+                st.session_state[widget_key] = default_cap
+
+            cap = st.number_input(
+                f"Capacité {name}", 
+                0, 
+                150, 
+                key=widget_key
+            )
             capacites_salles_input.append(cap)
 
     with tab_profs:
@@ -134,19 +186,20 @@ with st.sidebar:
         
         interdictions_input = []
         for i in range(nombre_profs_input):
-            default_value = saved_interdictions[i] if i < len(saved_interdictions) else 0 
-            default_index = 0
-            if default_value in dj_options_list:
-                default_index = dj_options_list.index(default_value)
+            widget_key = f"int_{i}"
+        
+            if widget_key not in st.session_state:
+                default_value = saved_interdictions[i] if i < len(saved_interdictions) else 0 
+                if default_value not in dj_options_list:
+                    default_value = 0
+                st.session_state[widget_key] = default_value
             
             sel = st.selectbox(
                 f"P{i+1}",
                 options=dj_options_list,
-                index=default_index,
                 format_func=lambda x: dj_opts[x],
-                key=f"int_{i}"
+                key=widget_key
             )
-            # st.info(default_index)
             interdictions_input.append(sel)
         
         st.subheader("Affectations Spécifiques Profs")
@@ -156,30 +209,48 @@ with st.sidebar:
         affectations_input_raw = []
         affectations_input_mzn = []
         for i in range(nombre_profs_input):
-            default_value = saved_affectations[i] if i < len(saved_affectations) else 0
+            widget_key = f"aff_{i}"
+            if widget_key not in st.session_state:
+                default_value = saved_affectations[i] if i < len(saved_affectations) else 0
+                if default_value not in affect_options_list:
+                    default_value = 0
+                st.session_state[widget_key] = default_value
+
             sel_idx = st.selectbox(
                 f"P{i+1}",
                 options=affect_options_list,
-                index=default_value,
                 format_func=lambda x, m=matieres_map_affectations: m.get(x, str(x)),
-                key=f"aff_{i}"
+                key=widget_key
             )
             affectations_input_raw.append(sel_idx)
             affectations_input_mzn.append(matieres_map_affectations[sel_idx] if sel_idx > 0 else "Void")
     with tab_cours:
         st.subheader("Nombre d'heures de cours par semaine par matière")
-        dj_opts = {"Mathematiques":6, "Physique":6, "EnseignementScientifique":2, "Anglais":2, "Espagnol":2,
-                   "HistoireGeographie":2, "Philosophie":3, "EPS":2, "Option":3}
+        dj_opts = {"EnseignementScientifique":2, "Anglais":2, "Espagnol":2, "Mathematiques":6,
+                   "HistoireGeographie":2, "Physique":6, "EPS":2, "Philosophie":2, "Option":3}
         saved_opts = []
-        for i in range(len(dj_opts)):
+
+        nombre_heures_cours_config = config.get("nombre_heures_cours", [])
+        for i in range(len(matieres)):
+            
+            matiere_name = matieres[i]
+            if matiere_name not in dj_opts:
+                continue
+
+            widget_key = f"cours_{i}"
+            if widget_key not in st.session_state:
+                if i < len(nombre_heures_cours_config):
+                    st.session_state[widget_key] = nombre_heures_cours_config[i]
+                else:
+                    st.session_state[widget_key] = dj_opts[matiere_name]
             x = st.number_input(
-                f"{matieres[i]}",
+                f"{matiere_name}",
                 min_value=0,
                 max_value=10,
-                value=dj_opts[matieres[i]],
-                key=f"cours_{i}"
+                key=widget_key
             )
             saved_opts.append(x)
+            
         saved_opts.append(0) # Pour 'Void'
     # st.subheader("Gérer la Configuration")
     # st.info(interdictions_input)
