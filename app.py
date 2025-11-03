@@ -86,6 +86,12 @@ with st.sidebar:
         try:
             config_json = json.load(uploaded_config)
             st.session_state.loaded_config = config_json
+            if "interdictions" in config_json:
+                for i, val in enumerate(config_json["interdictions"]):
+                    st.session_state[f"int_{i}"] = val 
+            if "affectations_raw" in config_json:
+                 for i, val in enumerate(config_json["affectations_raw"]):
+                    st.session_state[f"aff_{i}"] = val
             st.success("Configuration chargée !")
         except Exception as e:
             st.error(f"Erreur lecture JSON: {e}")
@@ -141,7 +147,7 @@ with st.sidebar:
                 key=f"int_{i}"
             )
             # st.info(default_index)
-            interdictions_input.append(default_index)
+            interdictions_input.append(sel)
         
         st.subheader("Affectations Spécifiques Profs")
         affect_options_list = list(matieres_map_affectations.keys())
@@ -158,8 +164,8 @@ with st.sidebar:
                 format_func=lambda x, m=matieres_map_affectations: m.get(x, str(x)),
                 key=f"aff_{i}"
             )
-            affectations_input_raw.append(default_value)
-            affectations_input_mzn.append(matieres_map_affectations[default_value] if default_value > 0 else "Void")
+            affectations_input_raw.append(sel_idx)
+            affectations_input_mzn.append(matieres_map_affectations[sel_idx] if sel_idx > 0 else "Void")
     with tab_cours:
         st.subheader("Nombre d'heures de cours par semaine par matière")
         dj_opts = {"Mathematiques":6, "Physique":6, "EnseignementScientifique":2, "Anglais":2, "Espagnol":2,
